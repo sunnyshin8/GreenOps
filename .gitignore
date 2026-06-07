@@ -1,0 +1,23 @@
+# Ignore data files and hackathon ML outputs
+dataset/
+catboost_info/
+submission_*.csv
+traffic_demand_prediction.ipynb
+train_model.py
+
+# Ignore temporary/probe scripts and data dumps
+check_events.py
+dump_sample.py
+probe_*.py
+sample_data.json
+revert_edits.json
+
+# Ignore old dashboard backups
+greenops_dashboard_v2*.json
+
+# Python standard ignores
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/

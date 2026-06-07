@@ -1,0 +1,806 @@
+{
+    "title": "GreenOps Cloud Resource Intelligence Dashboard",
+    "description": "Real-time monitoring of cloud workload cost, utilization, waste detection, and AI-powered insights.",
+    "inputs": {
+        "input_time": {
+            "options": {
+                "defaultValue": "-24h,now",
+                "token": "time"
+            },
+            "title": "Time Range",
+            "type": "input.timerange"
+        },
+        "input_time_sus": {
+            "type": "input.timerange",
+            "title": "Sustainability Time Range",
+            "options": {
+                "token": "time_sus",
+                "defaultValue": "0,now"
+            }
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "visualizations": {
+        "viz_ai_summary": {
+            "dataSources": {
+                "primary": "ds_ai_summary"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "count": 10
+            },
+            "title": "Summary & Recommendations",
+            "type": "splunk.table"
+        },
+        "viz_avg_cpu": {
+            "dataSources": {
+                "primary": "ds_avg_cpu"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "majorColor": "#6daa45",
+                "majorFontSize": 48,
+                "showSparkline": false,
+                "sparklineDisplay": "off",
+                "unit": "%",
+                "unitPosition": "after"
+            },
+            "title": "Avg CPU Utilization (%)",
+            "type": "splunk.singlevalue"
+        },
+        "viz_cost_by_instance": {
+            "dataSources": {
+                "primary": "ds_cost_by_instance"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "legendDisplay": "off",
+                "seriesColors": [
+                    "#a86fdf"
+                ],
+                "showXMajorGridLines": false
+            },
+            "title": "Cost by Instance Type",
+            "type": "splunk.bar"
+        },
+        "viz_cost_by_region": {
+            "dataSources": {
+                "primary": "ds_cost_by_region"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "legendDisplay": "off",
+                "seriesColors": [
+                    "#4f98a3"
+                ],
+                "showXMajorGridLines": false
+            },
+            "title": "Total Cost by Region",
+            "type": "splunk.bar"
+        },
+        "viz_cost_trend": {
+            "dataSources": {
+                "primary": "ds_cost_trend"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "fillOpacity": 0.3,
+                "legendDisplay": "bottom",
+                "lineWidth": 2,
+                "seriesColors": [
+                    "#4f98a3"
+                ],
+                "showXMajorGridLines": false,
+                "showYMajorGridLines": true
+            },
+            "title": "Cost Trend Over Time",
+            "type": "splunk.area"
+        },
+        "viz_cpu_trend": {
+            "dataSources": {
+                "primary": "ds_cpu_trend"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "legendDisplay": "bottom",
+                "lineWidth": 2,
+                "seriesColors": [
+                    "#6daa45",
+                    "#fdab43"
+                ],
+                "showXMajorGridLines": false
+            },
+            "title": "CPU & Memory Utilization Trend",
+            "type": "splunk.line"
+        },
+        "viz_region_count": {
+            "dataSources": {
+                "primary": "ds_region_count"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "majorColor": "#a86fdf",
+                "majorFontSize": 48,
+                "showSparkline": false,
+                "sparklineDisplay": "off"
+            },
+            "title": "Active Regions",
+            "type": "splunk.singlevalue"
+        },
+        "viz_top_underutilized": {
+            "dataSources": {
+                "primary": "ds_top_underutilized"
+            },
+            "options": {
+                "backgroundColor": "#e1d0ec",
+                "count": 10,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Top Underutilized Resources",
+            "type": "splunk.table"
+        },
+        "viz_top_waste": {
+            "containerOptions": {
+                "visibility": {}
+            },
+            "dataSources": {
+                "primary": "ds_top_waste"
+            },
+            "eventHandlers": [
+                {
+                    "options": {
+                        "earliest": "auto",
+                        "latest": "auto",
+                        "newTab": false,
+                        "query": "index=greenops\r\n| eval parts=split(_raw,\",\")\r\n| eval region=mvindex(parts,1)\r\n| eval workload_id=mvindex(parts,2)\r\n| eval workload_type=mvindex(parts,3)\r\n| eval cpu=mvindex(parts,5)\r\n| eval memory=mvindex(parts,6)\r\n| eval power=mvindex(parts,8)\r\n| eval instance_type=mvindex(parts,9)\r\n| eval waste=mvindex(parts,10)\r\n| search workload_id=\"$row.workload_id$\"\r\n| table _time region workload_id workload_type cpu memory power instance_type waste",
+                        "type": "custom"
+                    },
+                    "type": "drilldown.linkToSearch"
+                },
+                {
+                    "options": {
+                        "tokens": [
+                            {
+                                "key": "row.workload_id.value",
+                                "token": "selected_workload"
+                            }
+                        ]
+                    },
+                    "type": "drilldown.setToken"
+                },
+                {
+                    "options": {
+                        "earliest": "auto",
+                        "latest": "auto",
+                        "newTab": false,
+                        "query": "index=greenops\r\n| search _raw=\"*$click.value$*\"",
+                        "type": "custom"
+                    },
+                    "type": "drilldown.linkToSearch"
+                }
+            ],
+            "options": {
+                "backgroundColor": "#fae4fb",
+                "count": 10,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Top Wasteful Workloads",
+            "type": "splunk.table"
+        },
+        "viz_total_cost": {
+            "dataSources": {
+                "primary": "ds_total_cost"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "majorColor": "#e8af34",
+                "majorFontSize": 48,
+                "showSparkline": false,
+                "sparklineDisplay": "off",
+                "unit": "$",
+                "unitPosition": "before"
+            },
+            "title": "Total Estimated Cost ($)",
+            "type": "splunk.singlevalue"
+        },
+        "viz_total_workloads": {
+            "dataSources": {
+                "primary": "ds_total_workloads"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "majorColor": "#4f98a3",
+                "majorFontSize": 48,
+                "showSparkline": false,
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Total Workloads",
+            "type": "splunk.singlevalue"
+        },
+        "viz_waste_count": {
+            "dataSources": {
+                "primary": "ds_waste_count"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "majorColor": "#dd6974",
+                "majorFontSize": 48,
+                "showSparkline": false,
+                "sparklineDisplay": "off"
+            },
+            "title": "Waste Candidates",
+            "type": "splunk.singlevalue"
+        },
+        "viz_waste_pie": {
+            "dataSources": {
+                "primary": "ds_waste_pie"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "labelDisplay": "valuesAndPercentage",
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#dd6974",
+                    "#6daa45"
+                ]
+            },
+            "title": "Waste vs Non-Waste Workloads",
+            "type": "splunk.pie"
+        },
+        "viz_workload_by_env": {
+            "containerOptions": {},
+            "context": {},
+            "dataSources": {
+                "primary": "ds_workload_by_env"
+            },
+            "options": {},
+            "showLastUpdated": false,
+            "showProgressBar": false,
+            "title": "Workloads by Environment",
+            "type": "splunk.pie"
+        },
+        "viz_workload_by_type": {
+            "dataSources": {
+                "primary": "ds_workload_by_type"
+            },
+            "options": {
+                "backgroundColor": "#ffffff",
+                "legendDisplay": "off",
+                "seriesColors": [
+                    "#e8af34"
+                ]
+            },
+            "title": "Workload Count by Type",
+            "type": "splunk.column"
+        },
+        "viz_green_computing": {
+            "type": "splunk.table",
+            "dataSources": {
+                "primary": "ds_green_computing"
+            },
+            "title": "Green Computing Articles",
+            "options": {
+                "count": 5
+            }
+        },
+        "viz_energy_efficiency": {
+            "type": "splunk.table",
+            "dataSources": {
+                "primary": "ds_energy_efficiency"
+            },
+            "title": "Energy Efficiency News",
+            "options": {
+                "count": 5
+            }
+        },
+        "viz_sustainability_reports": {
+            "type": "splunk.table",
+            "dataSources": {
+                "primary": "ds_sustainability_reports"
+            },
+            "title": "Data Center Sustainability Reports",
+            "options": {
+                "count": 5
+            }
+        },
+        "viz_carbon_reduction": {
+            "type": "splunk.table",
+            "dataSources": {
+                "primary": "ds_carbon_reduction"
+            },
+            "title": "Carbon Reduction Initiatives",
+            "options": {
+                "count": 5
+            }
+        },
+        "viz_renewable_energy": {
+            "type": "splunk.table",
+            "dataSources": {
+                "primary": "ds_renewable_energy"
+            },
+            "title": "Renewable Energy Technology Updates",
+            "options": {
+                "count": 5
+            }
+        }
+    },
+    "dataSources": {
+        "ds_ai_summary": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cpu=tonumber(mvindex(parts,4)), cost=tonumber(mvindex(parts,8)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | eval status=if(waste_raw=\"1\",\"WASTE\",\"ACTIVE\") | eval recommendation=case(waste_raw=\"1\" AND cpu<20,\"Terminate or resize\", cpu<20,\"Rightsize or schedule shutdown\", cost>100,\"Review spend\", true(),\"Healthy\") | table _time region workload_type cpu cost status recommendation | head 10",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_avg_cpu": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cpu=tonumber(mvindex(parts,4)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats avg(cpu) as avg_cpu | eval avg_cpu=round(avg_cpu,1)",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_cost_by_instance": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), instance=if(mvcount(parts)=11,mvindex(parts,9),mvindex(parts,15)), cost=tonumber(mvindex(parts,8)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats sum(cost) as total_cost by instance | sort - total_cost",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_cost_by_region": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cost=tonumber(mvindex(parts,8)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats sum(cost) as total_cost by region | sort - total_cost",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_cost_trend": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cost=tonumber(mvindex(parts,8)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | timechart span=1h sum(cost) as total_cost",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_cpu_trend": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cpu=tonumber(mvindex(parts,4)), mem=tonumber(mvindex(parts,5)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | timechart span=1h avg(cpu) as avg_cpu avg(mem) as avg_memory",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_region_count": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats dc(region) as active_regions",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_top_underutilized": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_id=mvindex(parts,2), workload_type=mvindex(parts,3), cpu=tonumber(mvindex(parts,4)), mem=tonumber(mvindex(parts,5)), cost=tonumber(mvindex(parts,8)), instance=if(mvcount(parts)=11,mvindex(parts,9),mvindex(parts,15)), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND cpu < 20 | table workload_id region workload_type instance cpu mem cost | sort cpu | head 20",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_top_waste": {
+            "name": "ds_workload_details",
+            "options": {
+                "enableSmartSources": true,
+                "query": "index=greenops\r\n| eval parts=split(_raw,\",\")\r\n| eval region=mvindex(parts,1)\r\n| eval workload_id=mvindex(parts,2)\r\n| eval workload_type=mvindex(parts,3)\r\n| eval cpu=tonumber(mvindex(parts,5))\r\n| eval cost=tonumber(mvindex(parts,8))\r\n| eval instance=mvindex(parts,9)\r\n| eval waste_raw=mvindex(parts,10)\r\n| where (\r\n    \"$region_filter$\"=\"*\" OR\r\n    \"$region_filter$\"=\"\" OR\r\n    region=\"$region_filter$\"\r\n)\r\nAND (\r\n    \"$workload_filter$\"=\"*\" OR\r\n    \"$workload_filter$\"=\"\" OR\r\n    workload_type=\"$workload_filter$\"\r\n)\r\nAND waste_raw=\"1\"\r\n| table workload_id region workload_type instance cpu cost\r\n| sort - cost\r\n| head 20",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_total_cost": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)), cost=tonumber(mvindex(parts,8)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats sum(cost) as total_cost | eval total_cost=round(total_cost,2)",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_total_workloads": {
+            "name": "data_workloads",
+            "options": {
+                "query": "index=greenops\r\n| eval parts=split(_raw,\",\")\r\n| eval workload_type=mvindex(parts,3)\r\n| eval env=case(\r\n    workload_type=\"web_serving\",\"Production\",\r\n    workload_type=\"batch_ml_training\",\"Production\",\r\n    workload_type=\"data_pipeline\",\"Staging\",\r\n    workload_type=\"ci_cd\",\"Development\",\r\n    workload_type=\"dev_environment\",\"Development\",\r\n    true(),\"Other\"\r\n)\r\n| stats count by env",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_waste_count": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND waste_raw=\"1\" | stats count as waste_count",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_waste_pie": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") | eval waste_label=if(waste_raw=\"1\",\"Waste\",\"Active\") | stats count by waste_label",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_workload_by_env": {
+            "name": "ds_workload_by_env",
+            "options": {
+                "query": "index=greenops\r\n| eval parts=split(_raw,\",\")\r\n| eval workload_type=mvindex(parts,3)\r\n| eval env=case(\r\n    workload_type=\"web_serving\",\"Production\",\r\n    workload_type=\"batch_ml_training\",\"Production\",\r\n    workload_type=\"data_pipeline\",\"Staging\",\r\n    workload_type=\"ci_cd\",\"Development\",\r\n    workload_type=\"dev_environment\",\"Development\",\r\n    true(),\"Other\"\r\n)\r\n| stats count as workload_count by env",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_workload_by_type": {
+            "options": {
+                "query": "index=greenops | eval parts=split(_raw, \",\") | eval region=mvindex(parts,1), workload_type=mvindex(parts,3), waste_raw=if(mvcount(parts)=11,mvindex(parts,10),mvindex(parts,16)) | where (\"$region_filter$\"=\"*\" OR region=\"$region_filter$\") AND (\"$workload_filter$\"=\"*\" OR workload_type=\"$workload_filter$\") AND (\"$waste_filter$\"=\"all\" OR waste_raw=\"$waste_filter$\") | stats count by workload_type | sort - count",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_green_computing": {
+            "type": "ds.search",
+            "options": {
+                "query": "search index=* sourcetype=sustainability_feed \"*green*\" | dedup title | table title description link",
+                "queryParameters": {
+                    "earliest": "$time_sus.earliest$",
+                    "latest": "$time_sus.latest$"
+                }
+            }
+        },
+        "ds_energy_efficiency": {
+            "type": "ds.search",
+            "options": {
+                "query": "search index=* sourcetype=sustainability_feed \"*energy*\" | dedup title | table title description link",
+                "queryParameters": {
+                    "earliest": "$time_sus.earliest$",
+                    "latest": "$time_sus.latest$"
+                }
+            }
+        },
+        "ds_sustainability_reports": {
+            "type": "ds.search",
+            "options": {
+                "query": "search index=* sourcetype=sustainability_feed \"*data center*\" OR \"*sustainab*\" | dedup title | table title description link",
+                "queryParameters": {
+                    "earliest": "$time_sus.earliest$",
+                    "latest": "$time_sus.latest$"
+                }
+            }
+        },
+        "ds_carbon_reduction": {
+            "type": "ds.search",
+            "options": {
+                "query": "search index=* sourcetype=sustainability_feed \"*carbon*\" OR \"*emission*\" | dedup title | table title description link",
+                "queryParameters": {
+                    "earliest": "$time_sus.earliest$",
+                    "latest": "$time_sus.latest$"
+                }
+            }
+        },
+        "ds_renewable_energy": {
+            "type": "ds.search",
+            "options": {
+                "query": "search index=* sourcetype=sustainability_feed \"*renewable*\" OR \"*solar*\" OR \"*wind*\" | dedup title | table title description link",
+                "queryParameters": {
+                    "earliest": "$time_sus.earliest$",
+                    "latest": "$time_sus.latest$"
+                }
+            }
+        }
+    },
+    "layout": {
+        "layoutDefinitions": {
+            "layout_1": {
+                "options": {
+                    "backgroundColor": "#f4f6f8",
+                    "display": "auto-scale",
+                    "height": 1400,
+                    "width": 1440
+                },
+                "structure": [
+                    {
+                        "item": "input_time",
+                        "position": {
+                            "h": 60,
+                            "w": 300,
+                            "x": 20,
+                            "y": 10
+                        },
+                        "type": "input"
+                    },
+                    {
+                        "item": "viz_total_workloads",
+                        "position": {
+                            "h": 120,
+                            "w": 260,
+                            "x": 20,
+                            "y": 90
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_total_cost",
+                        "position": {
+                            "h": 120,
+                            "w": 260,
+                            "x": 290,
+                            "y": 90
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_avg_cpu",
+                        "position": {
+                            "h": 120,
+                            "w": 260,
+                            "x": 560,
+                            "y": 90
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_waste_count",
+                        "position": {
+                            "h": 120,
+                            "w": 260,
+                            "x": 830,
+                            "y": 90
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_region_count",
+                        "position": {
+                            "h": 120,
+                            "w": 260,
+                            "x": 1100,
+                            "y": 90
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_cost_trend",
+                        "position": {
+                            "h": 250,
+                            "w": 700,
+                            "x": 20,
+                            "y": 230
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_cpu_trend",
+                        "position": {
+                            "h": 250,
+                            "w": 690,
+                            "x": 730,
+                            "y": 230
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_cost_by_region",
+                        "position": {
+                            "h": 230,
+                            "w": 340,
+                            "x": 20,
+                            "y": 500
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_workload_by_type",
+                        "position": {
+                            "h": 230,
+                            "w": 340,
+                            "x": 370,
+                            "y": 500
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_waste_pie",
+                        "position": {
+                            "h": 230,
+                            "w": 340,
+                            "x": 720,
+                            "y": 500
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_cost_by_instance",
+                        "position": {
+                            "h": 230,
+                            "w": 350,
+                            "x": 1070,
+                            "y": 500
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_workload_by_env",
+                        "position": {
+                            "h": 230,
+                            "w": 340,
+                            "x": 20,
+                            "y": 750
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_top_waste",
+                        "position": {
+                            "h": 230,
+                            "w": 520,
+                            "x": 370,
+                            "y": 750
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_top_underutilized",
+                        "position": {
+                            "h": 230,
+                            "w": 520,
+                            "x": 900,
+                            "y": 750
+                        },
+                        "type": "block"
+                    },
+                    {
+                        "item": "viz_ai_summary",
+                        "position": {
+                            "h": 300,
+                            "w": 1400,
+                            "x": 20,
+                            "y": 1000
+                        },
+                        "type": "block"
+                    }
+                ],
+                "type": "absolute"
+            },
+            "layout_XZ0YBGNa": {
+                "type": "absolute",
+                "options": {
+                    "width": 1440,
+                    "height": 1000,
+                    "display": "auto-scale",
+                    "backgroundColor": "#f4f6f8"
+                },
+                "structure": [
+                    {
+                        "item": "viz_green_computing",
+                        "type": "block",
+                        "position": {
+                            "x": 20,
+                            "y": 20,
+                            "w": 700,
+                            "h": 300
+                        }
+                    },
+                    {
+                        "item": "viz_energy_efficiency",
+                        "type": "block",
+                        "position": {
+                            "x": 740,
+                            "y": 20,
+                            "w": 680,
+                            "h": 300
+                        }
+                    },
+                    {
+                        "item": "viz_sustainability_reports",
+                        "type": "block",
+                        "position": {
+                            "x": 20,
+                            "y": 340,
+                            "w": 1400,
+                            "h": 300
+                        }
+                    },
+                    {
+                        "item": "viz_carbon_reduction",
+                        "type": "block",
+                        "position": {
+                            "x": 20,
+                            "y": 660,
+                            "w": 700,
+                            "h": 300
+                        }
+                    },
+                    {
+                        "item": "viz_renewable_energy",
+                        "type": "block",
+                        "position": {
+                            "x": 740,
+                            "y": 660,
+                            "w": 680,
+                            "h": 300
+                        }
+                    }
+                ]
+            }
+        },
+        "tabs": {
+            "items": [
+                {
+                    "label": "New tab",
+                    "layoutId": "layout_1"
+                },
+                {
+                    "label": "New tab",
+                    "layoutId": "layout_XZ0YBGNa"
+                }
+            ]
+        },
+        "globalInputs": [
+            "input_time_sus"
+        ]
+    }
+}
