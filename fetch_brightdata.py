@@ -8,9 +8,22 @@ import requests
 # -------------------------------------------------
 # ✨ USER‑CONFIGURATION
 # -------------------------------------------------
-MCP_TOKEN    = "f4c4808a-cd7b-4959-b161-9abc9ab32819"                         # ← YOUR API token
-HEC_ENDPOINT = "http://localhost:8088/services/collector"          # Adjust if HEC runs on a different host/port
-HEC_TOKEN    = "d38a3acc-7f39-424f-bb3b-b9396657caeb"                        # ← HEC token you created in Splunk
+
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                k, v = line.strip().split('=', 1)
+                os.environ[k] = v
+
+MCP_TOKEN    = os.environ.get("MCP_TOKEN", "")
+HEC_ENDPOINT = os.environ.get("HEC_ENDPOINT", "http://localhost:8088/services/collector")
+HEC_TOKEN    = os.environ.get("HEC_TOKEN", "")
+
+if not MCP_TOKEN or not HEC_TOKEN:
+    print("[ERROR] MCP_TOKEN or HEC_TOKEN is missing. Please set them in a .env file.")
+    sys.exit(1)
 # -------------------------------------------------
 
 def fetch_feed_mcp():
